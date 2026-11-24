@@ -23,6 +23,7 @@ model Store {
   customers  Customer[]
   orders     DraftOrder[]
   carts      ShoppingCart[]
+  aiAgentConversations AiAgentConversation[]
   createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -151,7 +152,7 @@ model DraftOrderItem {
   productId   String     @map("product_id") @db.Uuid
   product     Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
   productName String     @map("product_name") @db.VarChar(180)
-  sku         String     @db.VarChar(80)
+  sku         String     @map("sku") @db.VarChar(80)
   unitPrice   Decimal    @map("unit_price") @db.Decimal(12, 2)
   quantity    Int
   lineTotal   Decimal    @map("line_total") @db.Decimal(12, 2)
@@ -186,4 +187,18 @@ model ShoppingCartItem {
   @@unique([cartId, productId])
   @@index([productId])
   @@map("shopping_cart_items")
+}
+
+model AiAgentConversation {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId      String   @map("store_id") @db.Uuid
+  cartId       String?  @map("cart_id") @db.Uuid
+  draftOrderId String?  @map("draft_order_id") @db.Uuid
+  messages     Json     @default("[]") @db.JsonB
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, updatedAt])
+  @@map("ai_agent_conversations")
 }

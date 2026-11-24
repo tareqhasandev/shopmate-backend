@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  ai-agent-chat:
+  backend:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://shopmate:shopmate@127.0.0.1:5432/shopmate?schema=public
@@ -21,12 +21,10 @@ jobs:
         with:
           node-version: 22
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
-      - name: Typecheck
+        run: npm install --include=dev --no-audit --no-fund
+      - name: Typecheck and validate Prisma schema
         run: npm run typecheck
-      - name: AI chat unit tests
-        run: >-
-          npm test -- --runTestsByPath
-          src/modules/ai-agent-chat/ai-agent-chat.planner.spec.ts
-          src/modules/ai-agent-chat/ai-agent-chat.service.spec.ts
-          src/modules/ai-agent-chat/commerce-tool.registry.spec.ts
+      - name: Build
+        run: npm run build
+      - name: Unit tests
+        run: npm test -- --testPathIgnorePatterns=products.integration.spec.ts

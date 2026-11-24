@@ -54,11 +54,11 @@ export class ProductQueryDto {
 
   @IsOptional()
   @IsIn(['name', 'price', 'brand', 'created_at'])
-  sort_by: 'name' | 'price' | 'brand' | 'created_at' = 'name';
+  sort_by?: 'name' | 'price' | 'brand' | 'created_at' = 'name';
 
   @IsOptional()
   @IsIn(['asc', 'desc'])
-  sort_order: 'asc' | 'desc' = 'asc';
+  sort_order?: 'asc' | 'desc' = 'asc';
 
   @IsOptional()
   @Type(() => Number)

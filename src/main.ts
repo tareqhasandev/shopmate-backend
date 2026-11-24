@@ -33,6 +33,7 @@ async function bootstrap(): Promise<void> {
 
   const publicTestApi = config.get<boolean>('SHOPMATE_PUBLIC_TEST_API', false) === true;
   const swaggerConfig = new DocumentBuilder()
+    .addBearerAuth({ type: 'http', scheme: 'bearer' }, 'bearer')
     .setTitle('ShopMate AI Commerce API')
     .setDescription(
       'Catalog, inventory, customer registration, cart and draft-order REST API. Draft orders never initiate payment. ' +
@@ -43,6 +44,21 @@ async function bootstrap(): Promise<void> {
     .setVersion('0.1.0')
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
+  // Mirror the global API guard: only catalog, health, and documentation reads are public by default.
+  const methods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace'] as const;
+  for (const [path, pathItem] of Object.entries(document.paths ?? {})) {
+    const routePath = path.replace(/^\/api(?=\/)/, '');
+    const operations = pathItem as unknown as Record<string, { security?: Array<Record<string, string[]>> } | undefined>;
+    for (const method of methods) {
+      const operation = operations[method];
+      if (!operation) continue;
+      const publicRead = (method === 'get' || method === 'head') && (
+        routePath === '/health' || routePath === '/docs' || routePath.startsWith('/docs/') || routePath === '/docs-json' ||
+        /^\/products(?:\/|$)/.test(routePath) || /^\/categories(?:\/|$)/.test(routePath)
+      );
+      if (!publicRead) operation.security = [{ bearer: [] }];
+    }
+  }
   SwaggerModule.setup('api/docs', app, document, {
     jsonDocumentUrl: 'api/docs-json',
     swaggerOptions: { persistAuthorization: false },
