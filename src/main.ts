@@ -56,7 +56,7 @@ async function bootstrap(): Promise<void> {
         routePath === '/health' || routePath === '/docs' || routePath.startsWith('/docs/') || routePath === '/docs-json' ||
         /^\/products(?:\/|$)/.test(routePath) || /^\/categories(?:\/|$)/.test(routePath)
       );
-      if (!publicRead) operation.security = [{ bearer: [] }];
+      operation.security = publicTestApi || publicRead ? [] : [{ bearer: [] }];
     }
   }
   SwaggerModule.setup('api/docs', app, document, {
