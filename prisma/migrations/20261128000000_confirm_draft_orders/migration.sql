@@ -1,0 +1,1 @@
+ALTER TYPE "DraftOrderStatus" ADD VALUE 'CONFIRMED';
