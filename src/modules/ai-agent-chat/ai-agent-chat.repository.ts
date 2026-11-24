@@ -11,12 +11,9 @@ export type AiConversation = {
   draftOrderId: string | null;
   messages: ChatMessage[];
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function readMessages(value: Prisma.JsonValue): ChatMessage[] {
+type ConversationRow = { id: string; store_id: string; cart_id: string | null; draft_order_id: string | null; messages: unknown };
+function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
+function readMessages(value: unknown): ChatMessage[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((entry) => {
     if (!isRecord(entry) || (entry.role !== 'user' && entry.role !== 'assistant')) return [];
@@ -24,44 +21,42 @@ function readMessages(value: Prisma.JsonValue): ChatMessage[] {
     return [{ role: entry.role, content: entry.content, createdAt: entry.createdAt } as ChatMessage];
   }).slice(-24);
 }
+function toDomain(row: ConversationRow): AiConversation {
+  return { id: row.id, storeId: row.store_id, cartId: row.cart_id, draftOrderId: row.draft_order_id, messages: readMessages(row.messages) };
+}
 
 @Injectable()
 export class AiAgentChatRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(storeId: string): Promise<AiConversation> {
-    const row = await this.prisma.aiAgentConversation.create({
-      data: { id: randomUUID(), storeId, messages: [] },
-    });
-    return this.toDomain(row);
+    const id = randomUUID();
+    await this.prisma.$executeRaw(Prisma.sql`
+      INSERT INTO "ai_agent_conversations" ("id", "store_id", "messages")
+      VALUES (${id}::uuid, ${storeId}::uuid, '[]'::jsonb)
+    `);
+    return { id, storeId, cartId: null, draftOrderId: null, messages: [] };
   }
 
   async findForStore(storeId: string, id: string): Promise<AiConversation | null> {
-    const row = await this.prisma.aiAgentConversation.findFirst({ where: { id, storeId } });
-    return row ? this.toDomain(row) : null;
+    const rows = await this.prisma.$queryRaw<ConversationRow[]>(Prisma.sql`
+      SELECT "id"::text, "store_id"::text, "cart_id"::text, "draft_order_id"::text, "messages"
+      FROM "ai_agent_conversations"
+      WHERE "id" = ${id}::uuid AND "store_id" = ${storeId}::uuid
+      LIMIT 1
+    `);
+    return rows[0] ? toDomain(rows[0]) : null;
   }
 
   async save(conversation: AiConversation): Promise<void> {
-    const result = await this.prisma.aiAgentConversation.updateMany({
-      where: { id: conversation.id, storeId: conversation.storeId },
-      data: {
-        cartId: conversation.cartId,
-        draftOrderId: conversation.draftOrderId,
-        messages: conversation.messages as Prisma.InputJsonValue,
-      },
-    });
-    if (result.count !== 1) throw new NotFoundException('Conversation not found');
-  }
-
-  private toDomain(row: {
-    id: string; storeId: string; cartId: string | null; draftOrderId: string | null; messages: Prisma.JsonValue;
-  }): AiConversation {
-    return {
-      id: row.id,
-      storeId: row.storeId,
-      cartId: row.cartId,
-      draftOrderId: row.draftOrderId,
-      messages: readMessages(row.messages),
-    };
+    const count = await this.prisma.$executeRaw(Prisma.sql`
+      UPDATE "ai_agent_conversations"
+      SET "cart_id" = ${conversation.cartId}::uuid,
+          "draft_order_id" = ${conversation.draftOrderId}::uuid,
+          "messages" = ${JSON.stringify(conversation.messages)}::jsonb,
+          "updated_at" = CURRENT_TIMESTAMP
+      WHERE "id" = ${conversation.id}::uuid AND "store_id" = ${conversation.storeId}::uuid
+    `);
+    if (count !== 1) throw new NotFoundException('Conversation not found');
   }
 }
