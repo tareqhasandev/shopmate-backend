@@ -7,6 +7,7 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { CartModule } from './modules/cart/cart.module';
+import { AiAgentChatModule } from './modules/ai-agent-chat/ai-agent-chat.module';
 import { validateEnvironment } from './config/environment.validation';
 import { PrismaModule } from './database/prisma.module';
 import { StoreContextModule } from './common/store/store-context.module';
@@ -25,6 +26,7 @@ import { ShopMateApiGuard } from './common/auth/shopmate-api.guard';
     CustomersModule,
     OrdersModule,
     CartModule,
+    AiAgentChatModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ShopMateApiGuard }],
 })
