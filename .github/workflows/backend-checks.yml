@@ -1,0 +1,32 @@
+name: Backend checks
+
+on:
+  push:
+    branches:
+      - shopmate-render-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  ai-agent-chat:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://shopmate:shopmate@127.0.0.1:5432/shopmate?schema=public
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: AI chat unit tests
+        run: >-
+          npm test -- --runTestsByPath
+          src/modules/ai-agent-chat/ai-agent-chat.planner.spec.ts
+          src/modules/ai-agent-chat/ai-agent-chat.service.spec.ts
+          src/modules/ai-agent-chat/commerce-tool.registry.spec.ts
